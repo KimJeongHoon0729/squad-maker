@@ -1,15 +1,21 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { Player, Tier } from "@/types";
 import { supabase } from "@/lib/supabase";
 import { v4 as uuidv4 } from "uuid";
 
 export function usePlayers() {
   const [players, setPlayers] = useState<Player[]>([]);
+  const playersRef = useRef<Player[]>(players);
   const [isLoaded, setIsLoaded] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // players가 바뀔 때마다 ref 동기화
+  useEffect(() => {
+    playersRef.current = players;
+  }, [players]);
 
   // 전체 플레이어 목록 불러오기
   const fetchPlayers = useCallback(async () => {
@@ -125,19 +131,25 @@ export function usePlayers() {
     }
   }, [fetchPlayers]);
 
-  // 전체 삭제
+  // 전체 삭제 (ref 사용으로 스테이트 클로저 문제 방지)
   const clearAllPlayers = useCallback(async () => {
-    const backup = [...players];
+    const backup = [...playersRef.current];
     setPlayers([]);
 
-    const { error } = await supabase.from("players").delete().gte("created_at", "1970-01-01");
+    if (backup.length === 0) return;
+
+    // ID 목록으로 삭제 (created_at 필터 대신 사용해 호환성 확보)
+    const ids = backup.map((p) => p.id);
+    const { error } = await supabase.from("players").delete().in("id", ids);
 
     if (error) {
       setPlayers(backup);
-      setError("전체 삭제에 실패했습니다.");
+      setError(
+        `전체 삭제에 실패했습니다: ${error.message ?? String(error)}`
+      );
       console.error(error);
     }
-  }, [players]);
+  }, []);
 
   return {
     players,
