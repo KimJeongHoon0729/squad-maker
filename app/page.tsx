@@ -35,7 +35,7 @@ export default function HomePage() {
   const [showModal, setShowModal] = useState(false);
   const [showAddForm, setShowAddForm] = useState(true);
   const [filterTier, setFilterTier] = useState<Tier | "ALL">("ALL");
-  const [confirmClear, setConfirmClear] = useState(false);
+
 
   const tierDist = useMemo(() => getTierDistribution(players), [players]);
 
@@ -55,14 +55,8 @@ export default function HomePage() {
   };
 
   const handleClearAll = () => {
-    if (confirmClear) {
-      clearAllPlayers();
-      setConfirmClear(false);
-      toast({ title: "전체 삭제 완료" });
-    } else {
-      setConfirmClear(true);
-      setTimeout(() => setConfirmClear(false), 3000);
-    }
+    clearAllPlayers();
+    toast({ title: "전체 삭제 완료" });
   };
 
   const canGenerate = players.length >= 2;
@@ -268,15 +262,10 @@ export default function HomePage() {
                 {/* 전체 삭제 */}
                 <button
                   onClick={handleClearAll}
-                  className={cn(
-                    "flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all duration-200",
-                    confirmClear
-                      ? "bg-destructive text-destructive-foreground animate-pulse"
-                      : "border border-border text-muted-foreground hover:border-destructive/40 hover:text-destructive"
-                  )}
+                  className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all duration-200 border border-border text-muted-foreground hover:border-destructive/40 hover:text-destructive"
                 >
                   <Trash2 size={12} />
-                  {confirmClear ? "확인" : "전체삭제"}
+                  전체삭제
                 </button>
               </div>
             </div>
