@@ -1,16 +1,14 @@
 import { cn } from "@/lib/utils";
-import { Tier, TIER_CONFIG } from "@/types";
+import { TierConfig } from "@/types";
 
 interface TierBadgeProps {
-  tier: Tier;
+  tier: TierConfig;
   size?: "sm" | "md" | "lg" | "xl";
   showLabel?: boolean;
   className?: string;
 }
 
 export function TierBadge({ tier, size = "md", showLabel = false, className }: TierBadgeProps) {
-  const config = TIER_CONFIG[tier];
-
   const sizeClasses = {
     sm: "w-6 h-6 text-xs font-bold",
     md: "w-8 h-8 text-sm font-bold",
@@ -21,17 +19,17 @@ export function TierBadge({ tier, size = "md", showLabel = false, className }: T
   return (
     <div className={cn("flex items-center gap-2", className)}>
       <div
-        className={cn(
-          "flex items-center justify-center rounded-sm",
-          config.bgClass,
-          sizeClasses[size]
-        )}
-        style={{ fontFamily: "var(--font-dm-mono)" }}
+        className={cn("flex items-center justify-center rounded-sm text-white", sizeClasses[size])}
+        style={{
+          background: `linear-gradient(135deg, ${tier.color}, ${tier.color}cc)`,
+          boxShadow: `0 0 8px ${tier.color}60`,
+          fontFamily: "var(--font-dm-mono)",
+        }}
       >
-        {tier}
+        {tier.label}
       </div>
       {showLabel && (
-        <span className="text-muted-foreground text-sm">{config.description}</span>
+        <span className="text-muted-foreground text-sm">{tier.description}</span>
       )}
     </div>
   );

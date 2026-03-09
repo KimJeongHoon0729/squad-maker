@@ -1,35 +1,32 @@
 "use client";
 
 import { useState } from "react";
-import { UserPlus, ChevronDown } from "lucide-react";
-import { Tier, TIER_CONFIG } from "@/types";
+import { UserPlus } from "lucide-react";
+import { TierConfig } from "@/types";
 import { TierBadge } from "@/components/TierBadge";
 import { cn } from "@/lib/utils";
 
 interface AddPlayerFormProps {
-  onAdd: (name: string, tier: Tier) => void;
+  tiers: TierConfig[];
+  onAdd: (name: string, tierLabel: string) => void;
 }
 
-export function AddPlayerForm({ onAdd }: AddPlayerFormProps) {
+export function AddPlayerForm({ tiers, onAdd }: AddPlayerFormProps) {
   const [name, setName] = useState("");
-  const [tier, setTier] = useState<Tier>("B");
+  const [selectedTierId, setSelectedTierId] = useState<string>(tiers[Math.floor(tiers.length / 2)]?.id ?? "");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState("");
 
+  const selectedTier = tiers.find((t) => t.id === selectedTierId) ?? tiers[0];
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name.trim()) {
-      setError("이름을 입력해주세요");
-      return;
-    }
-    if (name.trim().length > 20) {
-      setError("이름은 20자 이하로 입력해주세요");
-      return;
-    }
+    if (!name.trim()) { setError("이름을 입력해주세요"); return; }
+    if (name.trim().length > 20) { setError("이름은 20자 이하로 입력해주세요"); return; }
     setError("");
     setIsSubmitting(true);
     await new Promise((r) => setTimeout(r, 100));
-    onAdd(name.trim(), tier);
+    onAdd(name.trim(), selectedTier.label);
     setName("");
     setIsSubmitting(false);
   };
@@ -66,9 +63,7 @@ export function AddPlayerForm({ onAdd }: AddPlayerFormProps) {
             </span>
           )}
         </div>
-        {error && (
-          <p className="text-xs text-destructive animate-fade-in-up">{error}</p>
-        )}
+        {error && <p className="text-xs text-destructive animate-fade-in-up">{error}</p>}
       </div>
 
       {/* 티어 선택 */}
@@ -76,22 +71,25 @@ export function AddPlayerForm({ onAdd }: AddPlayerFormProps) {
         <label className="text-xs text-muted-foreground uppercase tracking-widest font-semibold">
           티어 선택
         </label>
-        <div className="grid grid-cols-5 gap-2">
-          {(Object.keys(TIER_CONFIG) as Tier[]).map((t) => (
+        <div
+          className="grid gap-2"
+          style={{ gridTemplateColumns: `repeat(${Math.min(tiers.length, 5)}, 1fr)` }}
+        >
+          {tiers.map((t) => (
             <button
-              key={t}
+              key={t.id}
               type="button"
-              onClick={() => setTier(t)}
+              onClick={() => setSelectedTierId(t.id)}
               className={cn(
                 "flex flex-col items-center gap-1 py-2 px-1 rounded-lg border transition-all duration-200",
-                tier === t
+                selectedTierId === t.id
                   ? "border-primary/50 bg-primary/10 scale-105"
                   : "border-border bg-secondary hover:border-primary/30 hover:bg-secondary/80"
               )}
             >
               <TierBadge tier={t} size="sm" />
-              <span className="text-xs text-muted-foreground" style={{ fontFamily: "var(--font-dm-mono)" }}>
-                {TIER_CONFIG[t].description}
+              <span className="text-xs text-muted-foreground truncate w-full text-center" style={{ fontFamily: "var(--font-dm-mono)" }}>
+                {t.description}
               </span>
             </button>
           ))}

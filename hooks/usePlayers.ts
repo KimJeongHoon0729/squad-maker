@@ -1,23 +1,21 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
-import { Player, Tier } from "@/types";
+import { Player } from "@/types";
 import { supabase } from "@/lib/supabase";
 import { v4 as uuidv4 } from "uuid";
 
 export function usePlayers() {
   const [players, setPlayers] = useState<Player[]>([]);
-  const playersRef = useRef<Player[]>(players);
+  const playersRef = useRef<Player[]>([]);
   const [isLoaded, setIsLoaded] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // players가 바뀔 때마다 ref 동기화
   useEffect(() => {
     playersRef.current = players;
   }, [players]);
 
-  // 전체 플레이어 목록 불러오기
   const fetchPlayers = useCallback(async () => {
     setIsLoading(true);
     setError(null);
@@ -29,14 +27,14 @@ export function usePlayers() {
 
       if (error) throw error;
 
-      const mapped: Player[] = (data ?? []).map((row) => ({
-        id: row.id,
-        name: row.name,
-        tier: row.tier as Tier,
-        createdAt: new Date(row.created_at).getTime(),
-      }));
-
-      setPlayers(mapped);
+      setPlayers(
+        (data ?? []).map((row) => ({
+          id: row.id,
+          name: row.name,
+          tierId: row.tier,   // DB 컬럼명 tier → tierId로 매핑
+          createdAt: new Date(row.created_at).getTime(),
+        }))
+      );
     } catch (err) {
       setError("플레이어 목록을 불러오지 못했습니다.");
       console.error(err);
@@ -50,62 +48,47 @@ export function usePlayers() {
     fetchPlayers();
   }, [fetchPlayers]);
 
-  // 플레이어 추가
-  const addPlayer = useCallback(async (name: string, tier: Tier) => {
+  const addPlayer = useCallback(async (name: string, tierLabel: string) => {
     const newPlayer: Player = {
       id: uuidv4(),
       name: name.trim(),
-      tier,
+      tierId: tierLabel,
       createdAt: Date.now(),
     };
 
-    // 낙관적 업데이트 (즉시 UI 반영)
     setPlayers((prev) => [...prev, newPlayer]);
 
     const { error } = await supabase.from("players").insert({
       id: newPlayer.id,
       name: newPlayer.name,
-      tier: newPlayer.tier,
+      tier: newPlayer.tierId,   // DB 저장 시 tier 컬럼
     });
 
     if (error) {
-      // 실패 시 롤백
       setPlayers((prev) => prev.filter((p) => p.id !== newPlayer.id));
       setError("플레이어 추가에 실패했습니다.");
       console.error(error);
       return null;
     }
-
     return newPlayer;
   }, []);
 
-  // 플레이어 삭제
   const removePlayer = useCallback(async (id: string) => {
-    const backup = players.find((p) => p.id === id);
-
-    // 낙관적 업데이트
+    const backup = playersRef.current.find((p) => p.id === id);
     setPlayers((prev) => prev.filter((p) => p.id !== id));
 
     const { error } = await supabase.from("players").delete().eq("id", id);
-
     if (error) {
       if (backup) setPlayers((list) => [...list, backup].sort((a, b) => a.createdAt - b.createdAt));
       setError("플레이어 삭제에 실패했습니다.");
       console.error(error);
     }
-  }, [players]);
+  }, []);
 
-  // 티어 수정
-  const updatePlayerTier = useCallback(async (id: string, tier: Tier) => {
-    setPlayers((prev) =>
-      prev.map((p) => (p.id === id ? { ...p, tier } : p))
-    );
+  const updatePlayerTier = useCallback(async (id: string, tierLabel: string) => {
+    setPlayers((prev) => prev.map((p) => (p.id === id ? { ...p, tierId: tierLabel } : p)));
 
-    const { error } = await supabase
-      .from("players")
-      .update({ tier })
-      .eq("id", id);
-
+    const { error } = await supabase.from("players").update({ tier: tierLabel }).eq("id", id);
     if (error) {
       setError("티어 변경에 실패했습니다.");
       console.error(error);
@@ -113,17 +96,10 @@ export function usePlayers() {
     }
   }, [fetchPlayers]);
 
-  // 이름 수정
   const updatePlayerName = useCallback(async (id: string, name: string) => {
-    setPlayers((prev) =>
-      prev.map((p) => (p.id === id ? { ...p, name: name.trim() } : p))
-    );
+    setPlayers((prev) => prev.map((p) => (p.id === id ? { ...p, name: name.trim() } : p)));
 
-    const { error } = await supabase
-      .from("players")
-      .update({ name: name.trim() })
-      .eq("id", id);
-
+    const { error } = await supabase.from("players").update({ name: name.trim() }).eq("id", id);
     if (error) {
       setError("이름 변경에 실패했습니다.");
       console.error(error);
@@ -131,22 +107,16 @@ export function usePlayers() {
     }
   }, [fetchPlayers]);
 
-  // 전체 삭제 (ref 사용으로 스테이트 클로저 문제 방지)
   const clearAllPlayers = useCallback(async () => {
     const backup = [...playersRef.current];
     setPlayers([]);
-
     if (backup.length === 0) return;
 
-    // ID 목록으로 삭제 (created_at 필터 대신 사용해 호환성 확보)
     const ids = backup.map((p) => p.id);
     const { error } = await supabase.from("players").delete().in("id", ids);
-
     if (error) {
       setPlayers(backup);
-      setError(
-        `전체 삭제에 실패했습니다: ${error.message ?? String(error)}`
-      );
+      setError(`전체 삭제에 실패했습니다: ${error.message}`);
       console.error(error);
     }
   }, []);

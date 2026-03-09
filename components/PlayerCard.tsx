@@ -2,30 +2,30 @@
 
 import { useState } from "react";
 import { Pencil, Trash2, Check, X } from "lucide-react";
-import { Player, Tier, TIER_CONFIG } from "@/types";
+import { Player, TierConfig } from "@/types";
 import { TierBadge } from "@/components/TierBadge";
 import { cn } from "@/lib/utils";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 interface PlayerCardProps {
   player: Player;
+  tiers: TierConfig[];
   onRemove: (id: string) => void;
-  onUpdateTier: (id: string, tier: Tier) => void;
+  onUpdateTier: (id: string, tierLabel: string) => void;
   onUpdateName: (id: string, name: string) => void;
   index: number;
 }
 
-export function PlayerCard({ player, onRemove, onUpdateTier, onUpdateName, index }: PlayerCardProps) {
+export function PlayerCard({ player, tiers, onRemove, onUpdateTier, onUpdateName, index }: PlayerCardProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [editName, setEditName] = useState(player.name);
   const [isRemoving, setIsRemoving] = useState(false);
 
+  const currentTier = tiers.find((t) => t.label === player.tierId) ?? tiers[0];
+
   const handleSave = () => {
-    if (editName.trim()) {
-      onUpdateName(player.id, editName);
-    } else {
-      setEditName(player.name);
-    }
+    if (editName.trim()) onUpdateName(player.id, editName);
+    else setEditName(player.name);
     setIsEditing(false);
   };
 
@@ -54,7 +54,7 @@ export function PlayerCard({ player, onRemove, onUpdateTier, onUpdateName, index
       )}
       style={{ animationDelay: `${index * 50}ms`, animationFillMode: "both" }}
     >
-      {/* 왼쪽 순번 */}
+      {/* 순번 */}
       <span
         className="text-muted-foreground/40 text-xs font-mono w-5 text-right shrink-0"
         style={{ fontFamily: "var(--font-dm-mono)" }}
@@ -62,20 +62,17 @@ export function PlayerCard({ player, onRemove, onUpdateTier, onUpdateName, index
         {String(index + 1).padStart(2, "0")}
       </span>
 
-      {/* 티어 배지 */}
-      <Select
-        value={player.tier}
-        onValueChange={(val) => onUpdateTier(player.id, val as Tier)}
-      >
+      {/* 티어 배지 (드롭다운) */}
+      <Select value={player.tierId} onValueChange={(val) => onUpdateTier(player.id, val)}>
         <SelectTrigger className="w-auto h-auto border-0 bg-transparent p-0 focus:ring-0 hover:bg-transparent">
-          <TierBadge tier={player.tier} size="md" />
+          {currentTier && <TierBadge tier={currentTier} size="md" />}
         </SelectTrigger>
         <SelectContent className="bg-card border-border">
-          {(Object.keys(TIER_CONFIG) as Tier[]).map((t) => (
-            <SelectItem key={t} value={t} className="cursor-pointer">
+          {tiers.map((t) => (
+            <SelectItem key={t.id} value={t.label} className="cursor-pointer">
               <div className="flex items-center gap-2">
                 <TierBadge tier={t} size="sm" />
-                <span className="text-sm text-muted-foreground">{TIER_CONFIG[t].description}</span>
+                <span className="text-sm text-muted-foreground">{t.description}</span>
               </div>
             </SelectItem>
           ))}
@@ -107,31 +104,19 @@ export function PlayerCard({ player, onRemove, onUpdateTier, onUpdateName, index
       )}>
         {isEditing ? (
           <>
-            <button
-              onClick={handleSave}
-              className="p-1.5 rounded hover:bg-primary/20 text-primary transition-colors"
-            >
+            <button onClick={handleSave} className="p-1.5 rounded hover:bg-primary/20 text-primary transition-colors">
               <Check size={14} />
             </button>
-            <button
-              onClick={handleCancel}
-              className="p-1.5 rounded hover:bg-destructive/20 text-destructive transition-colors"
-            >
+            <button onClick={handleCancel} className="p-1.5 rounded hover:bg-destructive/20 text-destructive transition-colors">
               <X size={14} />
             </button>
           </>
         ) : (
           <>
-            <button
-              onClick={() => setIsEditing(true)}
-              className="p-1.5 rounded hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors"
-            >
+            <button onClick={() => setIsEditing(true)} className="p-1.5 rounded hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors">
               <Pencil size={14} />
             </button>
-            <button
-              onClick={handleRemove}
-              className="p-1.5 rounded hover:bg-destructive/20 text-muted-foreground hover:text-destructive transition-colors"
-            >
+            <button onClick={handleRemove} className="p-1.5 rounded hover:bg-destructive/20 text-muted-foreground hover:text-destructive transition-colors">
               <Trash2 size={14} />
             </button>
           </>
@@ -141,7 +126,7 @@ export function PlayerCard({ player, onRemove, onUpdateTier, onUpdateName, index
       {/* 호버 글로우 라인 */}
       <div
         className="absolute left-0 top-0 bottom-0 w-0.5 rounded-l-lg opacity-0 group-hover:opacity-100 transition-opacity"
-        style={{ background: TIER_CONFIG[player.tier].color }}
+        style={{ background: currentTier?.color ?? "#00ff88" }}
       />
     </div>
   );
